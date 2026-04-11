@@ -1,0 +1,107 @@
+{
+  "id": "cfd204bf-85c8-448a-928f-aef76e19e685",
+  "name": "Profile AI",
+  "mappings": [
+    {
+      "fromKeyCode": 112,
+      "toKeyCode": 123,
+      "fromKeyName": "F1",
+      "toKeyName": "F12"
+    },
+    {
+      "fromKeyCode": 81,
+      "toKeyCode": 90,
+      "fromKeyName": "Q",
+      "toKeyName": "Z"
+    },
+    {
+      "fromKeyCode": 82,
+      "toKeyCode": 86,
+      "fromKeyName": "R",
+      "toKeyName": "V"
+    },
+    {
+      "fromKeyCode": 67,
+      "toKeyCode": 69,
+      "fromKeyName": "C",
+      "toKeyName": "E"
+    },
+    {
+      "fromKeyCode": 69,
+      "toKeyCode": 67,
+      "fromKeyName": "E",
+      "toKeyName": "C"
+    },
+    {
+      "fromKeyCode": 86,
+      "toKeyCode": 82,
+      "fromKeyName": "V",
+      "toKeyName": "R"
+    },
+    {
+      "fromKeyCode": 87,
+      "toKeyCode": 88,
+      "fromKeyName": "W",
+      "toKeyName": "X"
+    },
+    {
+      "fromKeyCode": 88,
+      "toKeyCode": 87,
+      "fromKeyName": "X",
+      "toKeyName": "W"
+    },
+    {
+      "fromKeyCode": 90,
+      "toKeyCode": 81,
+      "fromKeyName": "Z",
+      "toKeyName": "Q"
+    },
+    {
+      "fromKeyCode": 123,
+      "toKeyCode": 112,
+      "fromKeyName": "F12",
+      "toKeyName": "F1"
+    }
+  ],
+  "macros": [
+    {
+      "id": "cf063f53-6fe8-4b9b-bf14-68d37412dbc4",
+      "name": "ASD_Macro",
+      "actions": [
+        {
+          "type": "KEY_DOWN",
+          "keyCode": 65,
+          "delayMs": 0
+        },
+        {
+          "type": "KEY_UP",
+          "keyCode": 65,
+          "delayMs": 10
+        },
+        {
+          "type": "KEY_DOWN",
+          "keyCode": 83,
+          "delayMs": 0
+        },
+        {
+          "type": "KEY_UP",
+          "keyCode": 83,
+          "delayMs": 10
+        },
+        {
+          "type": "KEY_DOWN",
+          "keyCode": 68,
+          "delayMs": 0
+        },
+        {
+          "type": "KEY_UP",
+          "keyCode": 68,
+          "delayMs": 10
+        }
+      ],
+      "autoInsertDelay": true,
+      "cycleMode": "SPECIFIED_TIMES",
+      "cycleCount": 1
+    }
+  ]
+}

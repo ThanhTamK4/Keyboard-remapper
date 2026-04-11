@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline';">
+  <title>Key Remapper</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Tab bar -->
+    <div class="tab-bar">
+      <button class="tab active" data-tab="key-settings">Key Settings</button>
+      <button class="tab" data-tab="macro">Macro</button>
+      <button class="tab" data-tab="keysup">KeySup</button>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Tab 1: Key Settings                                          -->
+    <!-- ============================================================ -->
+    <div class="tab-content active" id="tab-key-settings">
+      <div class="key-settings-layout">
+        <!-- Profile sidebar -->
+        <div class="profile-sidebar">
+          <div class="profile-header">Profiles</div>
+          <ul id="profile-list" class="profile-list"></ul>
+          <div class="profile-actions">
+            <button id="profile-add" title="Add profile">+</button>
+            <button id="profile-del" title="Delete profile">&minus;</button>
+            <button id="profile-more" title="More options">&hellip;</button>
+          </div>
+          <!-- Hidden context menu for more options -->
+          <div id="profile-menu" class="context-menu hidden">
+            <button data-action="rename">Rename</button>
+            <button data-action="export">Export (.bkm)</button>
+            <button data-action="import">Import (.bkm)</button>
+          </div>
+          <input type="file" id="import-file" accept=".bkm" class="hidden">
+        </div>
+
+        <!-- Main area -->
+        <div class="key-settings-main">
+          <canvas id="keyboard-canvas" width="820" height="310" aria-label="Interactive keyboard layout — click a key to select it for remapping" role="img">Keyboard layout</canvas>
+
+          <!-- Key picker -->
+          <div class="key-picker-wrapper">
+            <div class="picker-title">Key setting</div>
+            <div class="picker-grid" id="picker-grid"></div>
+          </div>
+
+          <!-- Bottom bar -->
+          <div class="bottom-bar">
+            <div class="bar-left">
+              <span class="version-label">Driver version: 1.0</span>
+              <span id="bridge-status" class="bridge-disconnected">&#9675; Desktop app not detected</span>
+            </div>
+            <div class="bar-center">
+              <span id="status-label" class="status-inactive">&#9675;  Inactive</span>
+            </div>
+            <div class="bar-right">
+              <button id="btn-restore" class="btn">Restore</button>
+              <button id="btn-disable" class="btn btn-red">Disable</button>
+              <button id="btn-apply" class="btn btn-blue">Apply</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Tab 2: Macro                                                 -->
+    <!-- ============================================================ -->
+    <div class="tab-content" id="tab-macro">
+      <div class="macro-layout">
+        <!-- Macro list -->
+        <div class="macro-sidebar">
+          <div class="macro-sidebar-header">Macros</div>
+          <ul id="macro-list" class="macro-list-ul"></ul>
+          <div class="macro-sidebar-actions">
+            <button id="macro-add">+ New</button>
+            <button id="macro-rename">Rename</button>
+            <button id="macro-del">&minus; Delete</button>
+          </div>
+        </div>
+
+        <!-- Action table -->
+        <div class="macro-actions-panel">
+          <div class="macro-actions-header">Actions</div>
+          <div class="macro-table-wrap">
+            <table id="macro-table">
+              <thead><tr><th>#</th><th>Event</th><th>Key</th><th>Delay (ms)</th></tr></thead>
+              <tbody id="macro-table-body"></tbody>
+            </table>
+          </div>
+          <div class="macro-action-btns">
+            <button id="macro-action-modify">Modify Delay</button>
+            <button id="macro-action-delete">Delete Row</button>
+          </div>
+          <div class="macro-insert-bar">
+            <select id="macro-insert-type">
+              <option value="keydown">Key Down</option>
+              <option value="keyup">Key Up</option>
+              <option value="delay">Delay</option>
+            </select>
+            <label for="macro-insert-value" class="sr-only">Key name or delay</label>
+            <input type="text" id="macro-insert-value" placeholder="Key name or delay (ms)" autocomplete="off">
+            <button id="macro-action-insert">Insert</button>
+          </div>
+        </div>
+
+        <!-- Settings / Record / Play -->
+        <div class="macro-settings-panel">
+          <div class="macro-settings-header">Settings</div>
+          <label class="checkbox-row">
+            <input type="checkbox" id="macro-auto-delay"> Automatic insert delay
+          </label>
+          <div class="radio-group">
+            <label><input type="radio" name="cycle-mode" value="UNTIL_RELEASED" checked> Cycle until stopped</label>
+            <label><input type="radio" name="cycle-mode" value="SPECIFIED_TIMES"> Specified cycle times
+              <input type="number" id="macro-cycle-count" value="1" min="1" max="65535" class="small-input">
+            </label>
+          </div>
+          <hr>
+          <div class="macro-controls">
+            <button id="macro-record" class="btn">Record</button>
+            <button id="macro-play" class="btn btn-blue">Play</button>
+          </div>
+          <p class="macro-note" id="macro-bridge-note">Recording &amp; playback require the desktop app to be running.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Tab 3: KeySup (AI Chat)                                      -->
+    <!-- ============================================================ -->
+    <div class="tab-content" id="tab-keysup">
+      <div class="chat-layout">
+        <div class="chat-header">KeySup &mdash; Keyboard Support</div>
+        <div id="chat-messages" class="chat-messages"></div>
+        <div class="chat-input-row">
+          <label for="chat-input" class="sr-only">Chat message</label>
+          <input type="text" id="chat-input" placeholder="Ask me anything about key remapping..." autocomplete="off">
+          <button id="chat-send" class="btn btn-blue">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
