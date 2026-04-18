@@ -13,7 +13,7 @@ Intercepts key presses at the OS level using a Windows low-level keyboard hook (
 ## Features
 
 ### Desktop App (Java Swing)
-- **Visual keyboard layout** — 75% TKL keyboard with rainbow gradient; click any key to select it
+- **Visual keyboard layout** — 87% TKL keyboard with rainbow gradient; click any key to select it
 - **Key remapping** — categorised key picker (Common / Modifier / Advanced / Keypad)
 - **System-wide hooks** — blocks the original key and injects the replacement via `keybd_event`
 - **Macro recording & playback** — record key sequences with timing, play them back with repeat/loop modes
