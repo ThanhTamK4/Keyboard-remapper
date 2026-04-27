@@ -86,11 +86,14 @@ public class ProfileManager {
         return profile;
     }
 
-    /** Converts a profile's mappings to a VK-code map for the keyboard hook. */
+    /** Converts a profile's mappings to a VK-code map for the keyboard hook.
+     *  Disabled mappings are excluded — the hook should never see them. */
     public static Map<Integer, Integer> toVkMap(Profile profile) {
         Map<Integer, Integer> map = new HashMap<>();
         for (KeyMapping m : profile.getMappings()) {
-            map.put(m.getFromKeyCode(), m.getToKeyCode());
+            if (m.isEnabled()) {
+                map.put(m.getFromKeyCode(), m.getToKeyCode());
+            }
         }
         return map;
     }

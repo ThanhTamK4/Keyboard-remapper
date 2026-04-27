@@ -6,6 +6,9 @@ public class KeyMapping {
     private int toKeyCode;
     private String fromKeyName;
     private String toKeyName;
+    // Defaults to true so legacy profiles.json / .bkm files (missing the field)
+    // deserialize as enabled, matching pre-feature behavior.
+    private boolean enabled = true;
 
     public KeyMapping() {}
 
@@ -27,4 +30,7 @@ public class KeyMapping {
 
     public String getToKeyName() { return toKeyName; }
     public void setToKeyName(String toKeyName) { this.toKeyName = toKeyName; }
+
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
 }

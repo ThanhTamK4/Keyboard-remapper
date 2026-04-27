@@ -7,6 +7,7 @@ let state = {
   profiles: [],
   activeIndex: 0,
   pendingMappings: {},   // fromVk -> toVk
+  pendingDisabled: new Set(), // fromVk codes whose mapping is currently disabled
   selectedVk: -1,
   hookActive: false,
   javaConnected: false,
@@ -178,7 +179,8 @@ function drawKeyboard() {
     ctx.fillText(label, kx + kw / 2, ky + kh / 2);
 
     if (mapped && !sel) {
-      ctx.fillStyle = 'rgba(255,200,50,0.7)';
+      const disabled = state.pendingDisabled.has(k.vk);
+      ctx.fillStyle = disabled ? 'rgba(160,160,160,0.7)' : 'rgba(255,200,50,0.7)';
       ctx.beginPath();
       ctx.arc(kx + kw - 5, ky + 6, 3, 0, Math.PI * 2);
       ctx.fill();
@@ -228,6 +230,7 @@ canvas.addEventListener('click', (e) => {
     state.selectedVk = hit.vk;
     drawKeyboard();
     updatePickerHighlight();
+    updateSelectionRow();
   }
 });
 
@@ -260,6 +263,7 @@ function onPickerClick(targetVk) {
   if (state.selectedVk <= 0) return;
   if (targetVk === state.selectedVk) {
     delete state.pendingMappings[state.selectedVk];
+    state.pendingDisabled.delete(state.selectedVk);
   } else {
     // Warn about circular mappings (A→B and B→A)
     if (state.pendingMappings[targetVk] === state.selectedVk) {
@@ -269,6 +273,37 @@ function onPickerClick(targetVk) {
   }
   drawKeyboard();
   updatePickerHighlight();
+  updateSelectionRow();
+}
+
+function updateSelectionRow() {
+  const labelEl = document.getElementById('selection-label');
+  const toggle = document.getElementById('enabled-toggle');
+  const wrapper = toggle ? toggle.parentElement : null;
+  if (!labelEl || !toggle || !wrapper) return;
+  const vk = state.selectedVk;
+  if (vk <= 0 || !(vk in state.pendingMappings)) {
+    labelEl.textContent = '';
+    wrapper.style.display = 'none';
+    return;
+  }
+  const target = state.pendingMappings[vk];
+  labelEl.textContent = `Selected: ${vkLabel(vk)} → ${vkLabel(target)}`;
+  toggle.checked = !state.pendingDisabled.has(vk);
+  wrapper.style.display = 'inline-flex';
+}
+
+function onEnabledToggleChanged() {
+  const vk = state.selectedVk;
+  if (vk <= 0 || !(vk in state.pendingMappings)) return;
+  const toggle = document.getElementById('enabled-toggle');
+  if (toggle.checked) {
+    state.pendingDisabled.delete(vk);
+  } else {
+    state.pendingDisabled.add(vk);
+  }
+  drawKeyboard();
+  debouncedSave();
 }
 
 function updatePickerHighlight() {
@@ -304,12 +339,15 @@ async function loadProfiles() {
 function activateProfile() {
   const p = state.profiles[state.activeIndex];
   state.pendingMappings = {};
+  state.pendingDisabled = new Set();
   for (const m of (p.mappings || [])) {
     state.pendingMappings[m.fromKeyCode] = m.toKeyCode;
+    if (m.enabled === false) state.pendingDisabled.add(m.fromKeyCode);
   }
   state.selectedVk = -1;
   drawKeyboard();
   updatePickerHighlight();
+  updateSelectionRow();
   renderProfileList();
   renderMacroList();
 }
@@ -332,10 +370,14 @@ function renderProfileList() {
 
 async function saveProfiles() {
   const p = state.profiles[state.activeIndex];
-  p.mappings = Object.entries(state.pendingMappings).map(([from, to]) => ({
-    fromKeyCode: parseInt(from), toKeyCode: to,
-    fromKeyName: vkLabel(parseInt(from)), toKeyName: vkLabel(to)
-  }));
+  p.mappings = Object.entries(state.pendingMappings).map(([from, to]) => {
+    const fromCode = parseInt(from);
+    return {
+      fromKeyCode: fromCode, toKeyCode: to,
+      fromKeyName: vkLabel(fromCode), toKeyName: vkLabel(to),
+      enabled: !state.pendingDisabled.has(fromCode)
+    };
+  });
   try {
     await fetch('/api/profiles', {
       method: 'POST',
@@ -489,7 +531,10 @@ document.getElementById('btn-apply').addEventListener('click', async () => {
     const res = await fetch('/api/hook/apply', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mappings: state.pendingMappings })
+      body: JSON.stringify({
+        mappings: state.pendingMappings,
+        disabled: Array.from(state.pendingDisabled)
+      })
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -532,11 +577,13 @@ document.getElementById('btn-disable').addEventListener('click', async () => {
 document.getElementById('btn-restore').addEventListener('click', async () => {
   if (!confirm('Clear all mappings and restore defaults?')) return;
   state.pendingMappings = {};
+  state.pendingDisabled = new Set();
   state.selectedVk = -1;
   const p = state.profiles[state.activeIndex];
   p.mappings = [];
   drawKeyboard();
   updatePickerHighlight();
+  updateSelectionRow();
   saveProfiles();
 
   try {
@@ -1691,6 +1738,8 @@ async function checkOllama() {
 (async function init() {
   await loadVkLabels();
   buildPicker();
+  const enabledToggle = document.getElementById('enabled-toggle');
+  if (enabledToggle) enabledToggle.addEventListener('change', onEnabledToggleChanged);
   await loadProfiles();
   resizeCanvas();
   await pollBridgeStatus();

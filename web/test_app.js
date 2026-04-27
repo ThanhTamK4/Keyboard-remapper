@@ -569,6 +569,68 @@ test('executeCommand: unknown command', () => {
 });
 
 // ================================================================
+//  Per-mapping enable/disable toggle
+// ================================================================
+
+// Mirror of activateProfile()'s mapping-load logic in app.js
+function loadDisabledFromProfile(profile) {
+  const disabled = new Set();
+  for (const m of (profile.mappings || [])) {
+    if (m.enabled === false) disabled.add(m.fromKeyCode);
+  }
+  return disabled;
+}
+
+// Mirror of saveProfiles()'s mapping-write logic in app.js
+function buildSavedMappings(pendingMappings, pendingDisabled) {
+  return Object.entries(pendingMappings).map(([from, to]) => {
+    const fromCode = parseInt(from);
+    return {
+      fromKeyCode: fromCode, toKeyCode: to,
+      fromKeyName: vkLabel(fromCode), toKeyName: vkLabel(to),
+      enabled: !pendingDisabled.has(fromCode)
+    };
+  });
+}
+
+test('legacy profile (no enabled field) loads with empty disabled set', () => {
+  const profile = { mappings: [
+    { fromKeyCode: 0x14, toKeyCode: 0x1B, fromKeyName: 'Caps', toKeyName: 'Esc' }
+  ]};
+  const disabled = loadDisabledFromProfile(profile);
+  assert.strictEqual(disabled.size, 0);
+});
+
+test('profile with enabled:false populates disabled set', () => {
+  const profile = { mappings: [
+    { fromKeyCode: 0x41, toKeyCode: 0x42, enabled: true },
+    { fromKeyCode: 0x14, toKeyCode: 0x1B, enabled: false }
+  ]};
+  const disabled = loadDisabledFromProfile(profile);
+  assert.strictEqual(disabled.size, 1);
+  assert.ok(disabled.has(0x14));
+  assert.ok(!disabled.has(0x41));
+});
+
+test('saving round-trips disabled flag', () => {
+  const pendingMappings = { 0x41: 0x42, 0x14: 0x1B };
+  const pendingDisabled = new Set([0x14]);
+  const saved = buildSavedMappings(pendingMappings, pendingDisabled);
+  const a = saved.find(m => m.fromKeyCode === 0x41);
+  const caps = saved.find(m => m.fromKeyCode === 0x14);
+  assert.strictEqual(a.enabled, true);
+  assert.strictEqual(caps.enabled, false);
+});
+
+test('save then load round-trip preserves disabled set', () => {
+  const initial = new Set([0x14]);
+  const saved = buildSavedMappings({ 0x41: 0x42, 0x14: 0x1B }, initial);
+  const reloaded = loadDisabledFromProfile({ mappings: saved });
+  assert.strictEqual(reloaded.size, 1);
+  assert.ok(reloaded.has(0x14));
+});
+
+// ================================================================
 //  Results
 // ================================================================
 

@@ -60,6 +60,7 @@ public class KeyboardPanel extends JPanel {
 
     private int selectedVk = -1;
     private final Map<Integer, Integer> mappings = new HashMap<>();
+    private final java.util.Set<Integer> disabledFromKeys = new java.util.HashSet<>();
     private Consumer<Integer> onKeySelected;
 
     /* ------------------------------------------------------------------ */
@@ -97,6 +98,12 @@ public class KeyboardPanel extends JPanel {
     public void updateMappings(Map<Integer, Integer> m) {
         mappings.clear();
         mappings.putAll(m);
+        repaint();
+    }
+
+    public void updateDisabledMappings(java.util.Set<Integer> disabled) {
+        disabledFromKeys.clear();
+        disabledFromKeys.addAll(disabled);
         repaint();
     }
 
@@ -173,7 +180,9 @@ public class KeyboardPanel extends JPanel {
         g.drawString(label, tx, ty);
 
         if (mapped && !sel) {
-            g.setColor(new Color(255, 200, 50, 180));
+            boolean disabled = disabledFromKeys.contains(k.vk);
+            g.setColor(disabled ? new Color(160, 160, 160, 180)
+                                : new Color(255, 200, 50, 180));
             g.fillOval(kx + kw - 8, ky + 3, 5, 5);
         }
     }

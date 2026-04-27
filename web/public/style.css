@@ -522,3 +522,24 @@ hr {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #777; }
+
+/* Selection row (per-mapping enable/disable toggle) */
+.selection-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 22px;
+  padding: 2px 4px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.selection-row .selection-label {
+  font-weight: 500;
+}
+.selection-row .enabled-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}

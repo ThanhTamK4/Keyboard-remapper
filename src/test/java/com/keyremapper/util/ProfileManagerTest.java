@@ -57,6 +57,23 @@ class ProfileManagerTest {
     }
 
     @Test
+    void toVkMap_excludesDisabledMappings() {
+        Profile p = new Profile("Test");
+        KeyMapping enabled = new KeyMapping(0x41, 0x42, "A", "B");
+        KeyMapping disabled = new KeyMapping(0x14, 0x1B, "Caps", "Esc");
+        disabled.setEnabled(false);
+        p.getMappings().add(enabled);
+        p.getMappings().add(disabled);
+
+        Map<Integer, Integer> map = ProfileManager.toVkMap(p);
+        assertEquals(1, map.size(),
+                "Disabled mappings should be excluded from the hook map");
+        assertEquals(0x42, (int) map.get(0x41));
+        assertFalse(map.containsKey(0x14),
+                "Disabled mapping CapsLock->Esc should not appear");
+    }
+
+    @Test
     void toVkMap_fromVkMap_roundtrip() {
         Map<Integer, Integer> original = new HashMap<>();
         original.put(0x14, 0x1B);

@@ -46,6 +46,9 @@ public class MainFrame extends JFrame {
     private JLabel statusLabel;
 
     private final Map<Integer, Integer> pendingMappings = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.Set<Integer> pendingDisabled = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private JLabel selectionLabel;
+    private JCheckBox enabledToggle;
     private boolean hookActive = false;
     private HttpServer bridgeServer;
     private final MacroRecorder bridgeRecorder = new MacroRecorder();
@@ -107,18 +110,42 @@ public class MainFrame extends JFrame {
         pickerPanel.setOnKeyPicked(this::onPickerKeyClicked);
 
         JPanel bottomBar = buildBottomBar();
+        JPanel selectionRow = buildSelectionRow();
 
         JPanel centre = new JPanel(new BorderLayout(0, 8));
         centre.add(keyboardPanel, BorderLayout.CENTER);
 
+        JPanel southStack = new JPanel();
+        southStack.setLayout(new BoxLayout(southStack, BoxLayout.Y_AXIS));
+        selectionRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        bottomBar.setAlignmentX(Component.LEFT_ALIGNMENT);
+        southStack.add(selectionRow);
+        southStack.add(bottomBar);
+
         JPanel lower = new JPanel(new BorderLayout(0, 6));
         lower.add(pickerPanel, BorderLayout.CENTER);
-        lower.add(bottomBar, BorderLayout.SOUTH);
+        lower.add(southStack, BorderLayout.SOUTH);
         centre.add(lower, BorderLayout.SOUTH);
 
         tab.add(profilePanel, BorderLayout.WEST);
         tab.add(centre, BorderLayout.CENTER);
         return tab;
+    }
+
+    private JPanel buildSelectionRow() {
+        selectionLabel = new JLabel(" ");
+        selectionLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
+
+        enabledToggle = new JCheckBox("Enabled");
+        enabledToggle.setFocusPainted(false);
+        enabledToggle.setVisible(false);
+        enabledToggle.addActionListener(e -> onEnabledToggleChanged());
+
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        row.setBorder(new EmptyBorder(2, 4, 2, 0));
+        row.add(selectionLabel);
+        row.add(enabledToggle);
+        return row;
     }
 
     private JPanel buildBottomBar() {
@@ -368,6 +395,7 @@ public class MainFrame extends JFrame {
     private void onKeyboardKeySelected(int vk) {
         Integer mapped = pendingMappings.get(vk);
         pickerPanel.setHighlightedKey(mapped != null ? mapped : -1);
+        updateSelectionRow(vk);
     }
 
     private void onPickerKeyClicked(int targetVk) {
@@ -375,11 +403,37 @@ public class MainFrame extends JFrame {
         if (sel <= 0) return;
         if (targetVk == sel) {
             pendingMappings.remove(sel);
+            pendingDisabled.remove(sel);
         } else {
             pendingMappings.put(sel, targetVk);
         }
         syncUI();
         pickerPanel.setHighlightedKey(targetVk == sel ? -1 : targetVk);
+        updateSelectionRow(sel);
+    }
+
+    private void onEnabledToggleChanged() {
+        int sel = keyboardPanel.getSelectedVk();
+        if (sel <= 0 || !pendingMappings.containsKey(sel)) return;
+        if (enabledToggle.isSelected()) {
+            pendingDisabled.remove(sel);
+        } else {
+            pendingDisabled.add(sel);
+        }
+        syncUI();
+    }
+
+    private void updateSelectionRow(int vk) {
+        if (vk <= 0 || !pendingMappings.containsKey(vk)) {
+            selectionLabel.setText(" ");
+            enabledToggle.setVisible(false);
+            return;
+        }
+        int target = pendingMappings.get(vk);
+        selectionLabel.setText("Selected: "
+                + KeyUtils.getKeyLabel(vk) + " → " + KeyUtils.getKeyLabel(target));
+        enabledToggle.setSelected(!pendingDisabled.contains(vk));
+        enabledToggle.setVisible(true);
     }
 
     private void onDisable() {
@@ -389,23 +443,46 @@ public class MainFrame extends JFrame {
 
     private void onApply() {
         Profile p = profileManager.getActiveProfile();
-        p.setMappings(ProfileManager.fromVkMap(pendingMappings));
+        // Build profile mappings preserving the per-mapping enabled flag.
+        List<KeyMapping> list = new ArrayList<>();
+        for (Map.Entry<Integer, Integer> e : pendingMappings.entrySet()) {
+            int from = e.getKey();
+            int to = e.getValue();
+            KeyMapping km = new KeyMapping(from, to,
+                    KeyUtils.getKeyLabel(from), KeyUtils.getKeyLabel(to));
+            km.setEnabled(!pendingDisabled.contains(from));
+            list.add(km);
+        }
+        p.setMappings(list);
         profileManager.save();
-        hook.updateMappings(new HashMap<>(pendingMappings));
+        hook.updateMappings(buildEnabledHookMap());
         if (!hookActive) { hook.start(); hookActive = true; }
         updateStatus();
     }
 
     private void onRestore() {
         pendingMappings.clear();
+        pendingDisabled.clear();
         keyboardPanel.updateMappings(pendingMappings);
+        keyboardPanel.updateDisabledMappings(pendingDisabled);
         keyboardPanel.setSelectedKey(-1);
         pickerPanel.setHighlightedKey(-1);
+        updateSelectionRow(-1);
         Profile p = profileManager.getActiveProfile();
         p.getMappings().clear();
         profileManager.save();
         if (hookActive) { hook.stop(); hookActive = false; }
         updateStatus();
+    }
+
+    private Map<Integer, Integer> buildEnabledHookMap() {
+        Map<Integer, Integer> m = new HashMap<>();
+        for (Map.Entry<Integer, Integer> e : pendingMappings.entrySet()) {
+            if (!pendingDisabled.contains(e.getKey())) {
+                m.put(e.getKey(), e.getValue());
+            }
+        }
+        return m;
     }
 
     /* ================================================================== */
@@ -414,18 +491,23 @@ public class MainFrame extends JFrame {
 
     private void syncUI() {
         keyboardPanel.updateMappings(pendingMappings);
+        keyboardPanel.updateDisabledMappings(pendingDisabled);
     }
 
     private void loadActiveProfile() {
         Profile p = profileManager.getActiveProfile();
         pendingMappings.clear();
+        pendingDisabled.clear();
         for (KeyMapping m : p.getMappings()) {
             pendingMappings.put(m.getFromKeyCode(), m.getToKeyCode());
+            if (!m.isEnabled()) pendingDisabled.add(m.getFromKeyCode());
         }
         keyboardPanel.updateMappings(pendingMappings);
+        keyboardPanel.updateDisabledMappings(pendingDisabled);
         keyboardPanel.setSelectedKey(-1);
         pickerPanel.setHighlightedKey(-1);
-        if (hookActive) hook.updateMappings(new HashMap<>(pendingMappings));
+        updateSelectionRow(-1);
+        if (hookActive) hook.updateMappings(buildEnabledHookMap());
     }
 
     private void updateStatus() {
@@ -626,11 +708,17 @@ public class MainFrame extends JFrame {
             mappingsObj.addProperty(String.valueOf(e.getKey()), e.getValue());
         }
         obj.add("mappings", mappingsObj);
+        JsonArray disabledArr = new JsonArray();
+        for (Integer vk : pendingDisabled) {
+            disabledArr.add(vk);
+        }
+        obj.add("disabled", disabledArr);
         return gson.toJson(obj);
     }
 
     private void applyMappingsFromJson(String body) {
         pendingMappings.clear();
+        pendingDisabled.clear();
         try {
             JsonObject root = JsonParser.parseString(body).getAsJsonObject();
             if (root.has("mappings")) {
@@ -641,6 +729,13 @@ public class MainFrame extends JFrame {
                         int to = e.getValue().getAsInt();
                         pendingMappings.put(from, to);
                     } catch (NumberFormatException ignored) { }
+                }
+            }
+            if (root.has("disabled")) {
+                JsonArray arr = root.getAsJsonArray("disabled");
+                for (JsonElement el : arr) {
+                    try { pendingDisabled.add(el.getAsInt()); }
+                    catch (Exception ignored) { }
                 }
             }
         } catch (com.google.gson.JsonSyntaxException e) {
